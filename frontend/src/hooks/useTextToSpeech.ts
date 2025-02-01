@@ -40,7 +40,8 @@ export function useTextToSpeech(): UseTextToSpeechReturn {
       const request: TextToSpeechRequest = {
         text,
         language_code: language,
-        voice_name: language === 'en-GB' ? 'en-GB-Journey-D' : undefined
+        voice_name: language === 'en-GB' ? 'en-GB-Journey-D' : 
+                   language === 'zh-CN' ? 'cmn-CN-Standard-B' : undefined
       };
       const audioBlob = await textToSpeechService.convertTextToSpeech(request);
       const url = URL.createObjectURL(audioBlob);
