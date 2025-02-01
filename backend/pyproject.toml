@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "text-to-audio-backend"
+version = "0.1.0"
+description = "Backend for Text to Audio conversion service"
+requires-python = ">=3.8"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+namespaces = false
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "."
+] 

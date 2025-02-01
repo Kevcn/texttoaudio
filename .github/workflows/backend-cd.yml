@@ -1,0 +1,70 @@
+name: Backend CD
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-cd.yml'
+  workflow_run:
+    workflows: ["Backend CI"]
+    branches: [main]
+    types:
+      - completed
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'push' }}
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install dependencies
+      working-directory: ./backend
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -e .
+
+    - name: Build Docker image
+      working-directory: ./backend
+      run: |
+        docker build -t text-to-audio-backend .
+        docker tag text-to-audio-backend:latest ${{ secrets.DOCKER_REGISTRY }}/text-to-audio-backend:latest
+        docker tag text-to-audio-backend:latest ${{ secrets.DOCKER_REGISTRY }}/text-to-audio-backend:${{ github.sha }}
+
+    - name: Log in to Docker registry
+      uses: docker/login-action@v2
+      with:
+        registry: ${{ secrets.DOCKER_REGISTRY }}
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Push Docker image
+      run: |
+        docker push ${{ secrets.DOCKER_REGISTRY }}/text-to-audio-backend:latest
+        docker push ${{ secrets.DOCKER_REGISTRY }}/text-to-audio-backend:${{ github.sha }}
+
+    - name: Deploy to production
+      env:
+        DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+        DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      run: |
+        echo "$DEPLOY_KEY" > deploy_key
+        chmod 600 deploy_key
+        ssh -i deploy_key -o StrictHostKeyChecking=no $DEPLOY_USER@$DEPLOY_HOST "
+          docker pull ${{ secrets.DOCKER_REGISTRY }}/text-to-audio-backend:${{ github.sha }} &&
+          docker stop text-to-audio-backend || true &&
+          docker rm text-to-audio-backend || true &&
+          docker run -d --name text-to-audio-backend \
+            -p 8000:8000 \
+            --restart unless-stopped \
+            ${{ secrets.DOCKER_REGISTRY }}/text-to-audio-backend:${{ github.sha }}
+        " 

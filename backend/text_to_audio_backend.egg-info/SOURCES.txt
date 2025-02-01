@@ -1,0 +1,12 @@
+README.md
+pyproject.toml
+app/__init__.py
+app/main.py
+app/api/__init__.py
+app/api/tts.py
+tests/test_main.py
+tests/test_tts.py
+text_to_audio_backend.egg-info/PKG-INFO
+text_to_audio_backend.egg-info/SOURCES.txt
+text_to_audio_backend.egg-info/dependency_links.txt
+text_to_audio_backend.egg-info/top_level.txt
