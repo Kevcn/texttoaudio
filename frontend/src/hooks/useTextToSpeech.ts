@@ -37,7 +37,11 @@ export function useTextToSpeech(): UseTextToSpeechReturn {
       // Clear previous audio if exists
       clearAudio();
 
-      const request: TextToSpeechRequest = { text, language };
+      const request: TextToSpeechRequest = {
+        text,
+        language_code: language,
+        voice_name: language === 'en-GB' ? 'en-GB-Journey-D' : undefined
+      };
       const audioBlob = await textToSpeechService.convertTextToSpeech(request);
       const url = URL.createObjectURL(audioBlob);
       

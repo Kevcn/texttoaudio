@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing import Dict, List, Optional
 from app.services.tts_service import tts_service
 import os
 
@@ -11,100 +12,120 @@ class TextToSpeechRequest(BaseModel):
     Request model for text-to-speech conversion.
     
     Attributes:
-        text (str): The text to convert to speech. Must not be empty.
-        language (str): The language code for the speech. Defaults to "en".
-                       Must be one of the supported languages.
+        text (str): The text to convert to speech (required)
+        language_code (str): The language code (e.g., "en-US", defaults to "en-US")
+        voice_name (str, optional): Specific voice to use
+        speaking_rate (float): Speaking rate, between 0.25 and 4.0
+        pitch (float): Pitch adjustment, between -20.0 and 20.0
     """
-    text: str
-    language: str = "en"
+    text: str = Field(..., description="Text to convert to speech")
+    language_code: str = Field(default="en-US", description="Language code (e.g., en-US)")
+    voice_name: Optional[str] = Field(None, description="Specific voice to use")
+    speaking_rate: float = Field(
+        default=1.0,
+        ge=0.25,
+        le=4.0,
+        description="Speaking rate (0.25 to 4.0)"
+    )
+    pitch: float = Field(
+        default=0.0,
+        ge=-20.0,
+        le=20.0,
+        description="Pitch adjustment (-20.0 to 20.0)"
+    )
 
 class LanguageInfo(BaseModel):
     """
-    Model representing a supported language.
+    Language information model.
     
     Attributes:
-        code (str): The language code (e.g., "en", "zh-cn")
-        name (str): The human-readable language name (e.g., "English", "Chinese (Mandarin)")
+        code (str): Language code
+        name (str): Human-readable language name
     """
     code: str
     name: str
 
+class VoiceInfo(BaseModel):
+    """
+    Voice information model.
+    
+    Attributes:
+        name (str): Voice name
+        gender (str): Voice gender
+        natural (bool): Whether the voice is natural or synthetic
+    """
+    name: str
+    gender: str
+    natural: bool
+
 @router.post("/convert")
 async def convert_text_to_speech(request: TextToSpeechRequest):
     """
-    Convert text to speech and return the audio file.
-    
-    This endpoint accepts text and a language code, converts the text to speech
-    using Google's TTS service, and returns the audio as an MP3 file.
+    Convert text to speech using Google Cloud Text-to-Speech.
     
     Args:
-        request (TextToSpeechRequest): The request containing text and language.
-    
+        request (TextToSpeechRequest): The conversion request parameters
+        
     Returns:
-        FileResponse: The audio file in MP3 format.
-    
+        FileResponse: The generated audio file
+        
     Raises:
-        HTTPException: 
-            - 400: If the text is empty or the language is not supported
-            - 500: If the conversion fails for any other reason
-    
-    Example:
-        ```
-        POST /api/v1/tts/convert
-        {
-            "text": "Hello, world!",
-            "language": "en"
-        }
-        ```
+        HTTPException: If conversion fails or parameters are invalid
     """
     try:
-        # Convert text to speech
-        audio_path = await tts_service.convert_text_to_speech(
+        output_path = await tts_service.convert_text_to_speech(
             text=request.text,
-            lang=request.language
+            language_code=request.language_code,
+            voice_name=request.voice_name,
+            speaking_rate=request.speaking_rate,
+            pitch=request.pitch
         )
-
-        # Return the audio file
+        
         return FileResponse(
-            audio_path,
+            output_path,
             media_type="audio/mpeg",
-            filename="speech.mp3"
+            filename=f"speech_{request.language_code}.mp3"
         )
-    except HTTPException as he:
-        # Re-raise HTTP exceptions as is
-        raise he
+    except HTTPException:
+        raise
     except Exception as e:
-        # Convert other exceptions to 500 errors
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to convert text to speech: {str(e)}"
+        )
 
 @router.get("/languages")
 async def get_languages():
     """
     Get list of available languages.
     
-    Returns a list of supported languages with their codes and names.
-    This endpoint is useful for clients to determine which languages
-    are available for text-to-speech conversion.
-    
     Returns:
-        dict: A dictionary containing a list of language objects, each with:
-            - code (str): The language code
-            - name (str): The human-readable language name
-    
-    Example Response:
-        ```json
-        {
-            "languages": [
-                {"code": "en", "name": "English"},
-                {"code": "zh-cn", "name": "Chinese (Mandarin)"}
-            ]
-        }
-        ```
+        dict: List of supported languages with their codes and names
     """
     languages = tts_service.get_available_languages()
     return {
         "languages": [
-            {"code": code, "name": name}
+            LanguageInfo(code=code, name=name)
             for code, name in languages.items()
         ]
-    } 
+    }
+
+@router.get("/voices")
+async def get_voices(language_code: Optional[str] = None):
+    """
+    Get available voices, optionally filtered by language code.
+    
+    Args:
+        language_code (str, optional): Filter voices by language code
+        
+    Returns:
+        dict: Dictionary of available voices by language code
+    """
+    try:
+        voices = tts_service.get_voices(language_code)
+        return {"voices": voices}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get voices: {str(e)}"
+        ) 

@@ -5,7 +5,7 @@ import { textToSpeechService, Language } from '../services/api';
 
 export function TextToSpeech() {
   const [text, setText] = useState('');
-  const [language, setLanguage] = useState('en');
+  const [language, setLanguage] = useState('en-GB');
   const [languages, setLanguages] = useState<Language[]>([]);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const { audioUrl, isLoading, error: conversionError, convertText, clearAudio } = useTextToSpeech();
@@ -60,7 +60,7 @@ export function TextToSpeech() {
       <Select
         label="Language"
         value={language}
-        onChange={(value) => setLanguage(value || 'en')}
+        onChange={(value) => setLanguage(value || 'en-GB')}
         data={languages.map(lang => ({
           value: lang.code,
           label: lang.name

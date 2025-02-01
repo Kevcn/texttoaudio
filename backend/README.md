@@ -1,11 +1,12 @@
 # Text to Audio Backend
 
-A FastAPI-based backend service for converting text to speech using Google's Text-to-Speech service.
+A FastAPI-based backend service for converting text to speech using Google Cloud Text-to-Speech.
 
 ## Features
 
-- Convert text to speech in multiple languages
-- Support for English and Chinese (Mandarin)
+- High-quality text-to-speech conversion using Google Cloud
+- Support for multiple languages and voices
+- Voice customization (pitch, speaking rate)
 - RESTful API with OpenAPI documentation
 - Comprehensive test coverage
 - CORS support for frontend integration
@@ -18,6 +19,31 @@ A FastAPI-based backend service for converting text to speech using Google's Tex
 - Python 3.8 or higher
 - Virtual environment (recommended)
 - Docker (for containerized deployment)
+- Google Cloud API key with Text-to-Speech API enabled
+
+## Google Cloud Setup
+
+1. Create a Google Cloud project (if you haven't already):
+   - Go to the [Google Cloud Console](https://console.cloud.google.com)
+   - Click "Create Project" or select an existing project
+
+2. Enable the Cloud Text-to-Speech API:
+   - Go to [APIs & Services > Library](https://console.cloud.google.com/apis/library)
+   - Search for "Cloud Text-to-Speech API"
+   - Click "Enable"
+
+3. Create an API key:
+   - Go to [APIs & Services > Credentials](https://console.cloud.google.com/apis/credentials)
+   - Click "Create Credentials" > "API key"
+   - Copy your API key
+   - (Optional) Restrict the API key to only the Text-to-Speech API for security
+
+4. Set up the API key:
+   - For local development: Create a `.env` file with your API key
+   ```bash
+   GOOGLE_CLOUD_API_KEY=your-api-key-here
+   ```
+   - For Docker: Pass the API key as an environment variable (see Docker section)
 
 ## Installation
 
@@ -42,6 +68,12 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
+5. Create a `.env` file from the example:
+```bash
+cp .env.example .env
+```
+Then edit the `.env` file with your API key and other configuration.
+
 ## Running the Server
 
 ### Local Development
@@ -61,8 +93,12 @@ Build and run using Docker:
 # Build the image
 docker build -t text-to-audio-backend .
 
-# Run the container
-docker run -d -p 8000:8000 --name text-to-audio-backend text-to-audio-backend
+# Run the container with API key
+docker run -d \
+  -p 8000:8000 \
+  -e GOOGLE_CLOUD_API_KEY=your-api-key-here \
+  --name text-to-audio-backend \
+  text-to-audio-backend
 ```
 
 ## CI/CD Pipeline
@@ -120,27 +156,31 @@ Once the server is running, you can access:
 
 - `GET /` - Health check endpoint
 - `GET /api/v1/tts/languages` - List available languages
+- `GET /api/v1/tts/voices` - List available voices
 - `POST /api/v1/tts/convert` - Convert text to speech
-- `GET /api/v1/voices` - List available voices (TODO)
 
-### Rate Limiting
+### Voice Customization
 
-The API implements rate limiting to prevent abuse:
+The text-to-speech conversion supports several customization options:
 
-- Default limit: 60 requests per minute per IP address
-- Burst limit: 100 requests maximum
-- Status code 429 is returned when rate limit is exceeded
-- Limits are tracked separately for each IP address
-- Rate limit counters reset automatically after one minute
-- Old rate limit data is automatically cleaned up
+- `language_code`: Language code (e.g., "en-US", "zh-CN")
+- `voice_name`: Specific voice to use
+- `speaking_rate`: Speaking rate (0.25 to 4.0)
+- `pitch`: Pitch adjustment (-20.0 to 20.0)
 
 ### Example Request
 
-Convert text to speech:
+Convert text to speech with customization:
 ```bash
 curl -X POST "http://localhost:8000/api/v1/tts/convert" \
      -H "Content-Type: application/json" \
-     -d '{"text": "Hello, world!", "language": "en"}'
+     -d '{
+       "text": "Hello, world!",
+       "language_code": "en-US",
+       "voice_name": "en-US-Standard-A",
+       "speaking_rate": 1.0,
+       "pitch": 0.0
+     }'
 ```
 
 ## File Management

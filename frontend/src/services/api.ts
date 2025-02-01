@@ -4,7 +4,10 @@ const API_BASE_URL = 'http://localhost:8000/api/v1';
 
 export interface TextToSpeechRequest {
   text: string;
-  language: string;
+  language_code: string;
+  voice_name?: string;
+  speaking_rate?: number;
+  pitch?: number;
 }
 
 export interface Language {

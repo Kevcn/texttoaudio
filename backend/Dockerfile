@@ -31,6 +31,9 @@ RUN pip install -e .
 # Create output directory with proper permissions
 RUN mkdir -p output && chmod 777 output
 
+# Create volume mount point for output files
+VOLUME ["/app/output"]
+
 # Expose the port the app runs on
 EXPOSE 8000
 
